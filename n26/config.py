@@ -79,3 +79,21 @@ class Config(ConfigBase):
         regex="^({})$".format("|".join([MFA_TYPE_APP, MFA_TYPE_SMS])),
         default=MFA_TYPE_APP
     )
+
+    TWILIO_ACCOUNT_SID = StringConfigEntry(
+        description="Twilio Account SID",
+        key_path=[
+            NODE_ROOT,
+            "twilio_account_sid"
+        ],
+        required=True
+    )
+
+    TWILIO_AUTH_TOKEN = StringConfigEntry(
+        description="Twilio Auth Token",
+        key_path=[
+            NODE_ROOT,
+            "twilio_auth_token"
+        ],
+        required=True
+    )

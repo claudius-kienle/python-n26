@@ -1,9 +1,12 @@
 import base64
+from datetime import datetime
 import json
 import logging
 import os
+import re
 import time
 from pathlib import Path
+from twilio.rest import Client
 
 import click
 import requests
@@ -55,6 +58,8 @@ class Api(object):
             cfg = Config()
         self.config = cfg
         self._token_data = {}
+        self.twilio_client = Client(username=self.config.TWILIO_ACCOUNT_SID.value, 
+                                    password=self.config.TWILIO_AUTH_TOKEN.value)
         BASIC_AUTH_HEADERS["device-token"] = self.config.DEVICE_TOKEN.value
 
     @property
@@ -476,9 +481,10 @@ class Api(object):
         Request an authentication token from the server
         :return: the token or None if the response did not contain a token
         """
+        timestamp = datetime.utcnow()
         mfa_token = self._initiate_authentication_flow(username, password)
         self._request_mfa_approval(mfa_token)
-        return self._complete_authentication_flow(mfa_token)
+        return self._complete_authentication_flow(mfa_token, datetime_of_request=timestamp)
 
     @staticmethod
     def _initiate_authentication_flow(username: str, password: str) -> str:
@@ -537,20 +543,29 @@ class Api(object):
             })
         response.raise_for_status()
 
+
+    def _wait_for_sms(self, date_sent_after: datetime) -> str:
+        messages = self.twilio_client.messages.list(date_sent_after=date_sent_after)
+        for message in messages:
+            matches = re.findall(pattern="\d{6}", string=message.body)
+            if len(matches) > 0:
+                return matches[0].strip()
+        raise RuntimeError("didn't find valid sms")
+
+
     @retry(wait=wait_fixed(5), stop=stop_after_delay(60))
-    def _complete_authentication_flow(self, mfa_token: str) -> dict:
+    def _complete_authentication_flow(self, mfa_token: str, datetime_of_request: datetime) -> dict:
         LOGGER.debug("Completing authentication flow for mfa_token {}".format(mfa_token))
         mfa_response_data = {
             "mfaToken": mfa_token
         }
 
         if self.config.MFA_TYPE.value == MFA_TYPE_SMS:
+            sms_token = self._wait_for_sms(date_sent_after=datetime_of_request)
             mfa_response_data['grant_type'] = "mfa_otp"
 
-            hint = click.style("Enter the 6 digit SMS OTP code", fg="yellow")
-
             # type=str because it can have significant leading zeros
-            mfa_response_data['otp'] = click.prompt(hint, type=str)
+            mfa_response_data['otp'] = sms_token
         else:
             mfa_response_data['grant_type'] = "mfa_oob"
 
