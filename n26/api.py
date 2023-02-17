@@ -54,8 +54,10 @@ class Api(object):
 
         :param cfg: configuration object
         """
-        if not cfg:
-            cfg = Config()
+        if cfg:
+            self.init_app(cfg=cfg)
+
+    def init_app(self, cfg: Config):
         self.config = cfg
         self._token_data = {}
         self.twilio_client = Client(username=self.config.TWILIO_ACCOUNT_SID.value, 
