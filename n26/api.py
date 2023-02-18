@@ -60,8 +60,11 @@ class Api(object):
     def init_app(self, cfg: Config):
         self.config = cfg
         self._token_data = {}
-        self.twilio_client = Client(username=self.config.TWILIO_ACCOUNT_SID.value, 
-                                    password=self.config.TWILIO_AUTH_TOKEN.value)
+        if self.config.TWILIO_ACCOUNT_SID.value is not None:
+            self.twilio_client = Client(username=self.config.TWILIO_ACCOUNT_SID.value, 
+                                        password=self.config.TWILIO_AUTH_TOKEN.value)
+        else:
+            self.twilio_client = None
         BASIC_AUTH_HEADERS["device-token"] = self.config.DEVICE_TOKEN.value
 
     @property
@@ -547,6 +550,8 @@ class Api(object):
 
 
     def _wait_for_sms(self, date_sent_after: datetime) -> str:
+        if self.twilio_client is None:
+            raise RuntimeError("TwilioClient not initialized. Make sure to define twilio config on init")
         messages = self.twilio_client.messages.list(date_sent_after=date_sent_after)
         for message in messages:
             matches = re.findall(pattern="\d{6}", string=message.body)

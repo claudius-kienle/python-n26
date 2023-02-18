@@ -86,7 +86,6 @@ class Config(ConfigBase):
             NODE_ROOT,
             "twilio_account_sid"
         ],
-        required=True
     )
 
     TWILIO_AUTH_TOKEN = StringConfigEntry(
@@ -95,5 +94,4 @@ class Config(ConfigBase):
             NODE_ROOT,
             "twilio_auth_token"
         ],
-        required=True
     )
