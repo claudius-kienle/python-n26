@@ -470,9 +470,13 @@ class Api(object):
             try:
                 self.refresh_authentication()
             except HTTPError as http_error:
-                if http_error.response.status_code != 401:
+                if http_error.response.status_code == 401:
+                    new_auth = True
+                elif http_error.response.status_code == 429:
+                    # too many requests. Try authenticate
+                    new_auth = True
+                else:
                     raise http_error
-                new_auth = True
             except AssertionError:
                 new_auth = True
 
